@@ -17,7 +17,7 @@ import {
   ValidationBadge,
   statusGroupCounts,
   StatusDonut,
-} from '../lib/ui'
+} from '../components'
 import { applyWorkItemFilters, remainingText, useReferenceData } from '../app/shared'
 
 export function DashboardPage() {

@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
-import { AppErrorBoundary } from '../lib/ui'
+import { AppErrorBoundary } from '../components'
 import { AppRouter } from './router'
 
 export const queryClient = new QueryClient()

@@ -8,8 +8,9 @@ import {
 import {
   PageHeader,
   WorkItemLink,
-} from '../lib/ui'
-import { LinkEditor, groupBy, useReferenceData } from '../app/shared'
+} from '../components'
+import { groupBy, useReferenceData } from '../app/shared'
+import { LinkDialog } from '../components/links/LinkDialog'
 
 export function LinksPage() {
   const { workItems, links } = useReferenceData()
@@ -74,7 +75,7 @@ export function LinksPage() {
         })}
       </section>
 
-      <LinkEditor
+      <LinkDialog
         open={open || !!editing}
         onClose={() => {
           setOpen(false)

@@ -16,8 +16,9 @@ import {
   PeopleChip,
   ValidationBadge,
   WorkItemLink,
-} from '../lib/ui'
-import { BlockerEditor, groupBy, useReferenceData } from '../app/shared'
+} from '../components'
+import { groupBy, useReferenceData } from '../app/shared'
+import { NewBlockerDialog } from '../components/blockers/NewBlockerDialog'
 
 export function BlockersPage() {
   const { blockerTypes, blockers, workItems, people } = useReferenceData()
@@ -92,7 +93,7 @@ export function BlockersPage() {
         <EmptyState icon={<ShieldAlert size={28} />} title="No blockers" description="Everything is clear right now." />
       )}
 
-      <BlockerEditor
+      <NewBlockerDialog
         open={open}
         onClose={() => setOpen(false)}
         onSubmit={async (draft, workItemId) => {

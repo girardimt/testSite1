@@ -88,14 +88,33 @@ export interface Blocker {
   priorStatus: string
 }
 
+export interface WorkItemComment {
+  commentId: string
+  workItemId: string
+  body: string
+  authorEmail: string
+  createdAt: string
+  updatedAt: string
+  active: boolean
+}
+
+export interface AppSettings {
+  fallbackPersonEmail: string
+  emailDomain: string
+  allowedEmailDomains: string[]
+  defaultPageSize: number
+}
+
 export interface WorktrackDb {
   categories: Category[]
   blockerTypes: BlockerType[]
   workItems: WorkItem[]
   links: Link[]
   blockers: Blocker[]
+  comments: WorkItemComment[]
   persons: Person[]
   releases: Release[]
+  appSettings: AppSettings
 }
 
 export type WorktrackEntityKey = keyof WorktrackDb
@@ -115,7 +134,13 @@ export interface WorktrackStorageAdapter {
   saveLastChangedMap: (map: Record<string, string>) => void
 }
 
-export const FALLBACK_EMAIL = 'michael.girardi@pepsico.com'
+export const DEFAULT_APP_SETTINGS: AppSettings = {
+  fallbackPersonEmail: 'michael.girardi@pepsico.com',
+  emailDomain: 'pepsico.com',
+  allowedEmailDomains: ['pepsico.com'],
+  defaultPageSize: 25,
+}
+export const FALLBACK_EMAIL = DEFAULT_APP_SETTINGS.fallbackPersonEmail
 export const STATUS_OPTIONS: Status[] = [
   'Upcoming',
   'Assigned',
@@ -145,6 +170,7 @@ export const BACKEND_ENTITY_MAP: BackendEntityMapEntry[] = [
   { entity: 'workItems', localIdField: 'workItemId', persistentList: 'WorkItems', persistentIdField: 'WorkItemId' },
   { entity: 'blockers', localIdField: 'blockerId', persistentList: 'Blockers', persistentIdField: 'BlockerId' },
   { entity: 'links', localIdField: 'linkId', persistentList: 'Links', persistentIdField: 'LinkId' },
+  { entity: 'comments', localIdField: 'commentId', persistentList: 'Comments', persistentIdField: 'CommentId' },
   { entity: 'categories', localIdField: 'categoryId', persistentList: 'Categories', persistentIdField: 'CategoryId' },
   { entity: 'blockerTypes', localIdField: 'blockerTypeId', persistentList: 'BlockerTypes', persistentIdField: 'BlockerTypeId' },
   { entity: 'persons', localIdField: 'id', persistentList: 'People', persistentIdField: 'PersonId' },
@@ -203,6 +229,52 @@ export const setStorageAdapter = (adapter: WorktrackStorageAdapter) => {
 
 export const resetStorageAdapter = () => {
   storageAdapter = createLocalStorageAdapter(STORAGE_KEY, LAST_CHANGED_KEY)
+}
+
+const deriveTitleFromEmail = (email: string) => {
+  const base = email.split('@')[0] || 'Fallback Person'
+  return base
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ')
+}
+
+const createFallbackPerson = (email: string, id = `per-${Date.now()}`): Person => {
+  const normalizedEmail = email.trim().toLowerCase()
+  return {
+    id,
+    title:
+      normalizedEmail === DEFAULT_APP_SETTINGS.fallbackPersonEmail
+        ? 'Michael Girardi'
+        : deriveTitleFromEmail(normalizedEmail),
+    email: normalizedEmail,
+    role: 'Program Manager',
+    active: true,
+  }
+}
+
+const normalizeAppSettings = (settings?: Partial<AppSettings>): AppSettings => {
+  const fallbackPersonEmail = settings?.fallbackPersonEmail?.trim().toLowerCase() || DEFAULT_APP_SETTINGS.fallbackPersonEmail
+  const emailDomain = settings?.emailDomain?.trim().toLowerCase() || DEFAULT_APP_SETTINGS.emailDomain
+  const allowedEmailDomains = Array.from(
+    new Set(
+      (settings?.allowedEmailDomains ?? DEFAULT_APP_SETTINGS.allowedEmailDomains)
+        .map((domain) => domain.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  )
+  const defaultPageSize = Number(settings?.defaultPageSize)
+
+  return {
+    fallbackPersonEmail,
+    emailDomain,
+    allowedEmailDomains: Array.from(new Set([emailDomain, ...allowedEmailDomains])),
+    defaultPageSize:
+      Number.isFinite(defaultPageSize) && defaultPageSize > 0
+        ? Math.round(defaultPageSize)
+        : DEFAULT_APP_SETTINGS.defaultPageSize,
+  }
 }
 
 const formatDateValue = (date: Date) => {
@@ -465,7 +537,48 @@ const seedDb = (): WorktrackDb => {
     { linkId: 'lnk-5', name: 'CRF 77', workItemId: 'wi-1010', linkType: 'CRF', number: '77' },
   ]
 
-  return { categories, blockerTypes, workItems, links, blockers, persons, releases }
+  const comments: WorkItemComment[] = [
+    {
+      commentId: 'cmt-1',
+      workItemId: 'wi-1004',
+      body: 'Credential request is open with the platform team. Waiting on updated secrets to resume testing.',
+      authorEmail: FALLBACK_EMAIL,
+      createdAt: new Date(seedToday.getTime() - oneDay * 2).toISOString(),
+      updatedAt: new Date(seedToday.getTime() - oneDay * 2).toISOString(),
+      active: true,
+    },
+    {
+      commentId: 'cmt-2',
+      workItemId: 'wi-1004',
+      body: 'ServiceNow owner confirmed rotation is scheduled for tomorrow morning.',
+      authorEmail: 'alex.chen@pepsico.com',
+      createdAt: new Date(seedToday.getTime() - oneDay).toISOString(),
+      updatedAt: new Date(seedToday.getTime() - oneDay).toISOString(),
+      active: true,
+    },
+    {
+      commentId: 'cmt-3',
+      workItemId: 'wi-1001',
+      body: 'Drafted the swimlane structure. Need one more review before sharing with the team.',
+      authorEmail: 'priya.raman@pepsico.com',
+      createdAt: new Date(seedToday.getTime() - oneDay * 3).toISOString(),
+      updatedAt: new Date(seedToday.getTime() - oneDay * 3).toISOString(),
+      active: true,
+    },
+    {
+      commentId: 'cmt-4',
+      workItemId: 'wi-1004',
+      body: 'Old follow-up note kept for history only.',
+      authorEmail: 'ella.martinez@pepsico.com',
+      createdAt: new Date(seedToday.getTime() - oneDay * 5).toISOString(),
+      updatedAt: new Date(seedToday.getTime() - oneDay * 4).toISOString(),
+      active: false,
+    },
+  ]
+
+  const appSettings = { ...DEFAULT_APP_SETTINGS }
+
+  return { categories, blockerTypes, workItems, links, blockers, comments, persons, releases, appSettings }
 }
 
 export const parseLocalDate = (value: string) => {
@@ -599,6 +712,9 @@ export const computePriorStatus = (workItem: WorkItem, activeBlockersForWorkItem
   return prior?.priorStatus || 'Execution'
 }
 
+export const sortCommentsNewestFirst = (comments: WorkItemComment[]) =>
+  [...comments].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+
 export const sortBlockerTypesForDialog = (items: BlockerType[]) => {
   const priority = new Map([
     ['Hard', 0],
@@ -648,28 +764,28 @@ const enrichPendingPersons = (persons: Person[]) =>
     }
   })
 
-const ensureFallbackPerson = (persons: Person[]) => {
-  const fallback = persons.find((person) => person.email.toLowerCase() === FALLBACK_EMAIL)
+const ensureFallbackPerson = (persons: Person[], settings: AppSettings) => {
+  const fallbackEmail = settings.fallbackPersonEmail.trim().toLowerCase()
+  const fallback = persons.find((person) => person.email.toLowerCase() === fallbackEmail)
   if (fallback) {
     if (!fallback.active) {
       fallback.active = true
     }
     return persons
   }
-  return [
-    ...persons,
-    { id: `per-${Date.now()}`, title: 'Michael Girardi', email: FALLBACK_EMAIL, role: 'Program Manager', active: true },
-  ]
+  return [...persons, createFallbackPerson(fallbackEmail)]
 }
 
 export const loadDb = (): WorktrackDb => {
-  if (typeof window === 'undefined') {
-    return seedDb()
-  }
-  const parsed = storageAdapter.loadDb() ?? seedDb()
+  const seeded = seedDb()
+  const parsed = storageAdapter.loadDb() ?? seeded
+  const appSettings = normalizeAppSettings(parsed.appSettings)
   const next: WorktrackDb = {
+    ...seeded,
     ...parsed,
-    persons: ensureFallbackPerson(enrichPendingPersons(parsed.persons)),
+    appSettings,
+    persons: ensureFallbackPerson(enrichPendingPersons(parsed.persons ?? seeded.persons), appSettings),
+    comments: parsed.comments ?? seeded.comments,
   }
   storageAdapter.saveDb(next)
   return next
@@ -685,14 +801,29 @@ export const updateDb = (updater: (db: WorktrackDb) => WorktrackDb) => {
   return next
 }
 
+export const loadSettings = () => loadDb().appSettings
+
+export const saveSettings = (settings: AppSettings) => {
+  const nextSettings = normalizeAppSettings(settings)
+  updateDb((db) => ({
+    ...db,
+    appSettings: nextSettings,
+    persons: ensureFallbackPerson(db.persons, nextSettings),
+  }))
+  return nextSettings
+}
+
 const queryKeys = {
   categories: ['categories'],
   blockerTypes: ['blockerTypes'],
   workItems: ['workItems'],
   links: ['links'],
   blockers: ['blockers'],
+  comments: ['comments'],
+  workItemComments: (workItemId: string) => ['comments', workItemId] as const,
   persons: ['persons'],
   releases: ['releases'],
+  settings: ['settings'],
 } as const
 
 const invalidateAll = (
@@ -755,6 +886,12 @@ export const useBlockerTypes = () =>
 export const useWorkItems = () => useQuery({ queryKey: queryKeys.workItems, queryFn: async () => loadDb().workItems })
 export const useLinks = () => useQuery({ queryKey: queryKeys.links, queryFn: async () => loadDb().links })
 export const useBlockers = () => useQuery({ queryKey: queryKeys.blockers, queryFn: async () => loadDb().blockers })
+export const useWorkItemComments = (workItemId: string) =>
+  useQuery({
+    queryKey: queryKeys.workItemComments(workItemId),
+    queryFn: async () => sortCommentsNewestFirst(loadDb().comments.filter((comment) => comment.workItemId === workItemId)),
+  })
+export const useSettings = () => useQuery({ queryKey: queryKeys.settings, queryFn: async () => loadSettings() })
 export const usePersons = () =>
   useQuery({
     queryKey: queryKeys.persons,
@@ -772,8 +909,102 @@ export const useBlockerTypeMutations = () =>
 export const useWorkItemMutations = () => useCrudMutations<WorkItem>(queryKeys.workItems, 'workItems', (item) => item.workItemId)
 export const useLinkMutations = () => useCrudMutations<Link>(queryKeys.links, 'links', (item) => item.linkId)
 export const useBlockerMutations = () => useCrudMutations<Blocker>(queryKeys.blockers, 'blockers', (item) => item.blockerId)
+export const useCommentMutations = () => {
+  const queryClient = useQueryClient()
+
+  const addComment = useMutation({
+    mutationFn: async ({ workItemId, body, authorEmail }: Pick<WorkItemComment, 'workItemId' | 'body'> & { authorEmail?: string }) => {
+      const timestamp = new Date().toISOString()
+      const nextComment: WorkItemComment = {
+        commentId: `cmt-${Date.now()}`,
+        workItemId,
+        body: body.trim(),
+        authorEmail: authorEmail ?? loadSettings().fallbackPersonEmail,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        active: true,
+      }
+      updateDb((db) => ({ ...db, comments: [...db.comments, nextComment] }))
+      touchLastChanged(workItemId)
+      return nextComment
+    },
+    onSuccess: async (comment) => {
+      await invalidateAll(queryClient, [queryKeys.comments, queryKeys.workItemComments(comment.workItemId)])
+    },
+  })
+
+  const editComment = useMutation({
+    mutationFn: async ({ commentId, body }: Pick<WorkItemComment, 'commentId' | 'body'>) => {
+      let updatedComment: WorkItemComment | undefined
+      updateDb((db) => ({
+        ...db,
+        comments: db.comments.map((comment) => {
+          if (comment.commentId !== commentId) {
+            return comment
+          }
+          updatedComment = {
+            ...comment,
+            body: body.trim(),
+            updatedAt: new Date().toISOString(),
+          }
+          return updatedComment
+        }),
+      }))
+      if (!updatedComment) {
+        throw new Error(`Comment ${commentId} not found`)
+      }
+      touchLastChanged(updatedComment.workItemId)
+      return updatedComment
+    },
+    onSuccess: async (comment) => {
+      await invalidateAll(queryClient, [queryKeys.comments, queryKeys.workItemComments(comment.workItemId)])
+    },
+  })
+
+  const inactivateComment = useMutation({
+    mutationFn: async ({ commentId }: Pick<WorkItemComment, 'commentId'>) => {
+      let updatedComment: WorkItemComment | undefined
+      updateDb((db) => ({
+        ...db,
+        comments: db.comments.map((comment) => {
+          if (comment.commentId !== commentId) {
+            return comment
+          }
+          updatedComment = {
+            ...comment,
+            active: false,
+            updatedAt: new Date().toISOString(),
+          }
+          return updatedComment
+        }),
+      }))
+      if (!updatedComment) {
+        throw new Error(`Comment ${commentId} not found`)
+      }
+      touchLastChanged(updatedComment.workItemId)
+      return updatedComment
+    },
+    onSuccess: async (comment) => {
+      await invalidateAll(queryClient, [queryKeys.comments, queryKeys.workItemComments(comment.workItemId)])
+    },
+  })
+
+  return { addComment, editComment, inactivateComment }
+}
 export const usePersonMutations = () => useCrudMutations<Person>(queryKeys.persons, 'persons', (item) => item.id)
 export const useReleaseMutations = () => useCrudMutations<Release>(queryKeys.releases, 'releases', (item) => item.id)
+export const useSettingsMutations = () => {
+  const queryClient = useQueryClient()
+
+  const save = useMutation({
+    mutationFn: async (settings: AppSettings) => saveSettings(settings),
+    onSuccess: async () => {
+      await invalidateAll(queryClient, [queryKeys.settings, queryKeys.persons])
+    },
+  })
+
+  return { save }
+}
 
 export const useDeletePersonCascade = () => {
   const queryClient = useQueryClient()
@@ -781,22 +1012,13 @@ export const useDeletePersonCascade = () => {
   return useMutation({
     mutationFn: async (personId: string) => {
       const db = loadDb()
-      const fallback = db.persons.find((person) => person.email.toLowerCase() === FALLBACK_EMAIL)
+      const settings = loadSettings()
+      const fallbackEmail = settings.fallbackPersonEmail.toLowerCase()
+      const fallback = db.persons.find(
+        (person) => person.id !== personId && person.email.toLowerCase() === fallbackEmail,
+      )
       const fallbackId = fallback?.id || `per-${Date.now()}`
-      const nextPersons =
-        fallback ||
-        db.persons.some((person) => person.email.toLowerCase() === FALLBACK_EMAIL)
-          ? db.persons
-          : [
-              ...db.persons,
-              {
-                id: fallbackId,
-                title: 'Michael Girardi',
-                email: FALLBACK_EMAIL,
-                role: 'Program Manager',
-                active: true,
-              },
-            ]
+      const nextPersons = fallback ? db.persons : [...db.persons, createFallbackPerson(fallbackEmail, fallbackId)]
       let unassignedCount = 0
       let reassignedCount = 0
       const workItems = db.workItems.map((item) => {
@@ -816,7 +1038,7 @@ export const useDeletePersonCascade = () => {
       })
       saveDb({
         ...db,
-        persons: nextPersons.filter((person) => person.id !== personId),
+        persons: ensureFallbackPerson(nextPersons.filter((person) => person.id !== personId), settings),
         workItems,
         blockers,
       })

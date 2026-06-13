@@ -17,6 +17,7 @@ export const navTree = [
       { to: '/blocker-types', label: 'Blocker Types' },
       { to: '/people', label: 'People' },
       { to: '/releases-md', label: 'Releases' },
+      { to: '/settings', label: 'Settings' },
     ],
   },
 ] as const

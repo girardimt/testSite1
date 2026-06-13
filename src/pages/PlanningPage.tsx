@@ -16,14 +16,14 @@ import {
   PageHeader,
   PeopleChip,
   ReleaseBadge,
-} from '../lib/ui'
+} from '../components'
 import {
-  WorkItemEditor,
   type WorkItemDraft,
   remainingText,
   updateParam,
   useReferenceData,
 } from '../app/shared'
+import { WorkItemDialog } from '../components/work-items/WorkItemDialog'
 
 const planningColumns = [
   { key: 'Not Started', statuses: ['Upcoming', 'Assigned'] as Status[] },
@@ -208,7 +208,7 @@ export function PlanningPage() {
       ) : (
         <EmptyState icon={<FolderKanban size={28} />} title="No planning candidates" description="Nothing matches the current planning window and filters." />
       )}
-      <WorkItemEditor open={open} onClose={() => setOpen(false)} prefill={prefill} />
+      <WorkItemDialog open={open} onClose={() => setOpen(false)} prefill={prefill} />
     </div>
   )
 }

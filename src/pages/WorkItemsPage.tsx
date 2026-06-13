@@ -15,15 +15,15 @@ import {
   Field,
   PageHeader,
   PeopleChip,
-} from '../lib/ui'
+} from '../components'
 import {
-  WorkItemEditor,
   applyWorkItemFilters,
   groupBy,
   remainingText,
   updateParam,
   useReferenceData,
 } from '../app/shared'
+import { WorkItemDialog } from '../components/work-items/WorkItemDialog'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 const groupWorkItems = (items: WorkItem[], grouping: 'category' | 'release', categories: Category[], releases: Release[]) => {
@@ -181,7 +181,7 @@ export function WorkItemsPage() {
         />
       )}
 
-      <WorkItemEditor open={open} onClose={() => setOpen(false)} />
+      <WorkItemDialog open={open} onClose={() => setOpen(false)} />
     </div>
   )
 }

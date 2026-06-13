@@ -82,11 +82,14 @@ describe('worktrack helpers', () => {
       { linkId: 'lnk-1', linkType: 'INC' as const, number: 'INC100', name: 'INC100', workItemId: 'wi-1' },
     ]
     expect(validateLinkUniqueness('INC', '', links)).toBe('')
+  })
+
   it('defines backend entity mapping for all persisted collections', () => {
     expect(BACKEND_ENTITY_MAP.map((entry) => entry.entity)).toEqual([
       'workItems',
       'blockers',
       'links',
+      'comments',
       'categories',
       'blockerTypes',
       'persons',

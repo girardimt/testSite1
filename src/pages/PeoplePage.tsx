@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Users } from 'lucide-react'
 import {
+  DEFAULT_APP_SETTINGS,
   type Person,
-  usePersonMutations,
   useDeletePersonCascade,
+  usePersonMutations,
+  useSettings,
 } from '../lib/worktrack'
 import {
   Field,
   Modal,
   PageHeader,
   PeopleChip,
-} from '../lib/ui'
+} from '../components'
 import { quickCreatePerson, useReferenceData } from '../app/shared'
 
 function PersonEditor({
@@ -18,11 +20,13 @@ function PersonEditor({
   onClose,
   initial,
   onSubmit,
+  emailDomain,
 }: {
   open: boolean
   onClose: () => void
   initial?: Person
   onSubmit: (person: Person) => Promise<void>
+  emailDomain: string
 }) {
   const [draft, setDraft] = useState(
     initial || { id: `per-${Date.now()}`, title: '', email: '', role: '', active: true } satisfies Person,
@@ -36,7 +40,7 @@ function PersonEditor({
         <Field label="Name">
           <input className="form-input" value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} />
         </Field>
-        <Field label="Email" required>
+        <Field label="Email" required hint={`Use your @${emailDomain} address`}>
           <input className="form-input" value={draft.email} onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))} />
         </Field>
         <Field label="Role">
@@ -46,7 +50,7 @@ function PersonEditor({
         <button
           type="button"
           className="primary-button"
-          disabled={!draft.email.trim() || !/^[^@\s]+@pepsico\.com$/i.test(draft.email)}
+          disabled={!draft.email.trim() || draft.email.trim().toLowerCase().split('@')[1] !== emailDomain.toLowerCase()}
           onClick={async () => {
             await onSubmit({ ...draft, email: draft.email.toLowerCase() })
             onClose()
@@ -61,6 +65,7 @@ function PersonEditor({
 
 export function PeoplePage() {
   const { people } = useReferenceData()
+  const settings = useSettings().data ?? DEFAULT_APP_SETTINGS
   const personMutations = usePersonMutations()
   const deleteCascade = useDeletePersonCascade()
   const [open, setOpen] = useState(false)
@@ -77,12 +82,12 @@ export function PeoplePage() {
 
       <section className="card">
         <div className="row gap wrap">
-          <input className="form-input" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@pepsico.com" />
+          <input className="form-input" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={`name@${settings.emailDomain}`} />
           <button
             type="button"
             className="primary-button"
             onClick={async () => {
-              const created = await quickCreatePerson(email, personMutations.create)
+              const created = await quickCreatePerson(email, personMutations.create, settings)
               if (created) {
                 setEmail('')
               }
@@ -143,6 +148,7 @@ export function PeoplePage() {
           setEditing(null)
         }}
         initial={editing || undefined}
+        emailDomain={settings.emailDomain}
         onSubmit={async (person) => {
           if (editing) {
             await personMutations.update.mutateAsync(person)
