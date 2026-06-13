@@ -81,6 +81,7 @@ export function LinksPage() {
           setEditing(null)
         }}
         initial={editing || undefined}
+        existingLinks={links}
         onSubmit={async (draft) => {
           if (editing) {
             await linkMutations.update.mutateAsync(draft)

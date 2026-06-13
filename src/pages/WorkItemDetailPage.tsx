@@ -321,6 +321,7 @@ export function WorkItemDetailPage() {
         open={linkOpen}
         onClose={() => setLinkOpen(false)}
         workItemId={item.workItemId}
+        existingLinks={links}
         onSubmit={async (draft) => {
           await linkMutations.create.mutateAsync(draft)
           setLinkOpen(false)
