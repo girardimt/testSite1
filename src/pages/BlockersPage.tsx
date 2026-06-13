@@ -4,6 +4,7 @@ import {
   blockerBadgeStatus,
   computeNextValidation,
   computePriorStatus,
+  formatDisplayDate,
   todayString,
   touchLastChanged,
   useBlockerMutations,
@@ -75,8 +76,8 @@ export function BlockersPage() {
                       <td>
                         <PeopleChip person={people.find((entry) => entry.id === blocker.assignedToId)} />
                       </td>
-                      <td>{blocker.nextValidation}</td>
-                      <td>{blocker.expectedResolution}</td>
+                      <td>{formatDisplayDate(blocker.nextValidation)}</td>
+                      <td>{formatDisplayDate(blocker.expectedResolution)}</td>
                       <td>
                         <ValidationBadge status={blockerBadgeStatus(blocker.blockerActive, blocker.nextValidation)} />
                       </td>

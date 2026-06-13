@@ -56,7 +56,12 @@ export function ReleasesViewPage() {
                   </thead>
                   <tbody>
                     {items.map((item) => (
-                      <tr key={item.workItemId} onClick={() => navigate(`/work-items/${item.workItemId}`)}>
+                      <tr
+                        key={item.workItemId}
+                        tabIndex={0}
+                        onClick={() => navigate(`/work-items/${item.workItemId}`)}
+                        onKeyDown={(event) => event.key === 'Enter' && navigate(`/work-items/${item.workItemId}`)}
+                      >
                         <td>
                           <span className={statusColor(item.status)}>{item.status}</span>
                         </td>
