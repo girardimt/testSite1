@@ -73,6 +73,7 @@ import {
   useWorkItemMutations,
   useWorkItems,
   validateLinkNumber,
+  validateLinkUniqueness,
 } from './lib/worktrack'
 import {
   AppErrorBoundary,
@@ -786,6 +787,7 @@ function WorkItemDetailPage() {
         open={linkOpen}
         onClose={() => setLinkOpen(false)}
         workItemId={item.workItemId}
+        existingLinks={links}
         onSubmit={async (draft) => {
           await linkMutations.create.mutateAsync(draft)
           setLinkOpen(false)
@@ -976,6 +978,7 @@ function LinksPage() {
           setEditing(null)
         }}
         initial={editing || undefined}
+        existingLinks={links}
         onSubmit={async (draft) => {
           if (editing) {
             await linkMutations.update.mutateAsync(draft)
@@ -1760,12 +1763,14 @@ function LinkEditor({
   onClose,
   initial,
   workItemId,
+  existingLinks,
   onSubmit,
 }: {
   open: boolean
   onClose: () => void
   initial?: WorkLink
   workItemId?: string
+  existingLinks: WorkLink[]
   onSubmit: (draft: WorkLink) => Promise<void>
 }) {
   const { workItems } = useReferenceData()
@@ -1781,6 +1786,8 @@ function LinkEditor({
 
   const normalized = normalizeLinkNumber(type, number)
   const warning = validateLinkNumber(type, number)
+  const uniquenessError = warning ? '' : validateLinkUniqueness(type, normalized, existingLinks, initial?.linkId)
+  const errorMessage = warning || uniquenessError
   return (
     <Modal open={open} onClose={onClose} title={initial ? 'Edit Link' : 'Document Link'}>
       <div className="modal-form">
@@ -1805,12 +1812,12 @@ function LinkEditor({
             ))}
           </select>
         </Field>
-        {warning ? <p className="danger-text">{warning}</p> : null}
+        {errorMessage ? <p className="danger-text">{errorMessage}</p> : null}
         <div className="preview-panel">Preview: {normalized ? deriveLinkDisplayName(type, normalized) : '—'}</div>
         <button
           type="button"
           className="primary-button"
-          disabled={!normalized || !!warning}
+          disabled={!normalized || !!errorMessage}
           onClick={async () => {
             await onSubmit({
               linkId: initial?.linkId || `lnk-${Date.now()}`,

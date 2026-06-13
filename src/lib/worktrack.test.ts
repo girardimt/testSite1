@@ -9,6 +9,7 @@ import {
   parseLocalDate,
   releaseTypeColor,
   validateLinkNumber,
+  validateLinkUniqueness,
 } from './worktrack'
 
 describe('worktrack helpers', () => {
@@ -38,5 +39,43 @@ describe('worktrack helpers', () => {
   it('maps blocker and release helpers', () => {
     expect(blockerBadgeStatus(false, '2026-06-12')).toBe('cleared')
     expect(releaseTypeColor('PGT')).toContain('badge-plum')
+  })
+
+  it('validateLinkUniqueness returns empty string when no duplicates exist', () => {
+    const links = [
+      { linkId: 'lnk-1', linkType: 'INC' as const, number: 'INC100', name: 'INC100', workItemId: 'wi-1' },
+    ]
+    expect(validateLinkUniqueness('INC', 'INC200', links)).toBe('')
+    expect(validateLinkUniqueness('RITM', 'RITM100', links)).toBe('')
+  })
+
+  it('validateLinkUniqueness detects duplicate linkType + number', () => {
+    const links = [
+      { linkId: 'lnk-1', linkType: 'INC' as const, number: 'INC100', name: 'INC100', workItemId: 'wi-1' },
+    ]
+    const error = validateLinkUniqueness('INC', 'INC100', links)
+    expect(error).not.toBe('')
+    expect(error).toContain('INC100')
+  })
+
+  it('validateLinkUniqueness excludes the current link when editing', () => {
+    const links = [
+      { linkId: 'lnk-1', linkType: 'INC' as const, number: 'INC100', name: 'INC100', workItemId: 'wi-1' },
+    ]
+    expect(validateLinkUniqueness('INC', 'INC100', links, 'lnk-1')).toBe('')
+  })
+
+  it('validateLinkUniqueness only flags matching type, not same number of different type', () => {
+    const links = [
+      { linkId: 'lnk-1', linkType: 'INC' as const, number: 'INC100', name: 'INC100', workItemId: 'wi-1' },
+    ]
+    expect(validateLinkUniqueness('RITM', 'INC100', links)).toBe('')
+  })
+
+  it('validateLinkUniqueness returns empty string when normalizedNumber is empty', () => {
+    const links = [
+      { linkId: 'lnk-1', linkType: 'INC' as const, number: 'INC100', name: 'INC100', workItemId: 'wi-1' },
+    ]
+    expect(validateLinkUniqueness('INC', '', links)).toBe('')
   })
 })

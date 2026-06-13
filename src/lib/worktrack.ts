@@ -449,6 +449,27 @@ export const validateLinkNumber = (type: LinkType, raw: string) => {
   return ''
 }
 
+export const validateLinkUniqueness = (
+  type: LinkType,
+  normalizedNumber: string,
+  existingLinks: Link[],
+  currentLinkId?: string,
+): string => {
+  if (!normalizedNumber) {
+    return ''
+  }
+  const duplicate = existingLinks.find(
+    (link) =>
+      link.linkId !== currentLinkId &&
+      link.linkType === type &&
+      link.number === normalizedNumber,
+  )
+  if (duplicate) {
+    return `A ${type} link with number ${normalizedNumber} already exists.`
+  }
+  return ''
+}
+
 export const deriveLinkDisplayName = (type: LinkType, number: string) => {
   if (type === 'RITM' || type === 'INC') {
     return number
