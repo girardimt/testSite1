@@ -98,6 +98,23 @@ export interface WorktrackDb {
   releases: Release[]
 }
 
+export type WorktrackEntityKey = keyof WorktrackDb
+
+export interface BackendEntityMapEntry {
+  entity: WorktrackEntityKey
+  localIdField: string
+  persistentList: string
+  persistentIdField: string
+}
+
+export interface WorktrackStorageAdapter {
+  readonly id: string
+  loadDb: () => WorktrackDb | null
+  saveDb: (db: WorktrackDb) => void
+  loadLastChangedMap: () => Record<string, string>
+  saveLastChangedMap: (map: Record<string, string>) => void
+}
+
 export const FALLBACK_EMAIL = 'michael.girardi@pepsico.com'
 export const STATUS_OPTIONS: Status[] = [
   'Upcoming',
@@ -124,10 +141,69 @@ export const STATUS_GROUPS: Record<Status, StatusGroup> = {
 export const SIZE_OPTIONS: Size[] = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 export const LINK_TYPE_OPTIONS: LinkType[] = ['RITM', 'INC', 'ADO', 'CRF', 'AskMe']
 export const RELEASE_TYPE_OPTIONS: ReleaseType[] = ['PGT', 'BreakFix', 'Other']
+export const BACKEND_ENTITY_MAP: BackendEntityMapEntry[] = [
+  { entity: 'workItems', localIdField: 'workItemId', persistentList: 'WorkItems', persistentIdField: 'WorkItemId' },
+  { entity: 'blockers', localIdField: 'blockerId', persistentList: 'Blockers', persistentIdField: 'BlockerId' },
+  { entity: 'links', localIdField: 'linkId', persistentList: 'Links', persistentIdField: 'LinkId' },
+  { entity: 'categories', localIdField: 'categoryId', persistentList: 'Categories', persistentIdField: 'CategoryId' },
+  { entity: 'blockerTypes', localIdField: 'blockerTypeId', persistentList: 'BlockerTypes', persistentIdField: 'BlockerTypeId' },
+  { entity: 'persons', localIdField: 'id', persistentList: 'People', persistentIdField: 'PersonId' },
+  { entity: 'releases', localIdField: 'id', persistentList: 'Releases', persistentIdField: 'ReleaseId' },
+]
 
 const STORAGE_KEY = 'worktrack:v2:db'
 const LAST_CHANGED_KEY = 'worktrack:lastChanged'
 const oneDay = 24 * 60 * 60 * 1000
+
+const createLocalStorageAdapter = (storageKey: string, lastChangedKey: string): WorktrackStorageAdapter => ({
+  id: 'browser-local-storage',
+  loadDb: () => {
+    if (typeof window === 'undefined') {
+      return null
+    }
+    const raw = window.localStorage.getItem(storageKey)
+    return raw ? (JSON.parse(raw) as WorktrackDb) : null
+  },
+  saveDb: (db) => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    window.localStorage.setItem(storageKey, JSON.stringify(db))
+  },
+  loadLastChangedMap: () => {
+    if (typeof window === 'undefined') {
+      return {}
+    }
+    const raw = window.localStorage.getItem(lastChangedKey)
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {}
+  },
+  saveLastChangedMap: (map) => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    window.localStorage.setItem(lastChangedKey, JSON.stringify(map))
+  },
+})
+
+export const createPersistentStorageAdapterStub = (): WorktrackStorageAdapter => ({
+  id: 'persistent-backend-stub',
+  loadDb: () => null,
+  saveDb: () => undefined,
+  loadLastChangedMap: () => ({}),
+  saveLastChangedMap: () => undefined,
+})
+
+let storageAdapter: WorktrackStorageAdapter = createLocalStorageAdapter(STORAGE_KEY, LAST_CHANGED_KEY)
+
+export const getStorageAdapter = () => storageAdapter
+
+export const setStorageAdapter = (adapter: WorktrackStorageAdapter) => {
+  storageAdapter = adapter
+}
+
+export const resetStorageAdapter = () => {
+  storageAdapter = createLocalStorageAdapter(STORAGE_KEY, LAST_CHANGED_KEY)
+}
 
 const formatDateValue = (date: Date) => {
   const year = date.getFullYear()
@@ -519,22 +595,15 @@ export const sortBlockerTypesForDialog = (items: BlockerType[]) => {
 }
 
 const getLastChangedMap = () => {
-  if (typeof window === 'undefined') {
-    return {} as Record<string, string>
-  }
-  const raw = window.localStorage.getItem(LAST_CHANGED_KEY)
-  return raw ? (JSON.parse(raw) as Record<string, string>) : {}
+  return storageAdapter.loadLastChangedMap()
 }
 
 export const getLastChanged = (workItemId: string) => getLastChangedMap()[workItemId] || 'Seeded data'
 
 export const touchLastChanged = (workItemId: string) => {
-  if (typeof window === 'undefined') {
-    return
-  }
   const next = getLastChangedMap()
   next[workItemId] = new Date().toLocaleString()
-  window.localStorage.setItem(LAST_CHANGED_KEY, JSON.stringify(next))
+  storageAdapter.saveLastChangedMap(next)
 }
 
 const enrichPendingPersons = (persons: Person[]) =>
@@ -576,21 +645,17 @@ export const loadDb = (): WorktrackDb => {
   if (typeof window === 'undefined') {
     return seedDb()
   }
-  const raw = window.localStorage.getItem(STORAGE_KEY)
-  const parsed = raw ? (JSON.parse(raw) as WorktrackDb) : seedDb()
+  const parsed = storageAdapter.loadDb() ?? seedDb()
   const next: WorktrackDb = {
     ...parsed,
     persons: ensureFallbackPerson(enrichPendingPersons(parsed.persons)),
   }
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  storageAdapter.saveDb(next)
   return next
 }
 
 export const saveDb = (db: WorktrackDb) => {
-  if (typeof window === 'undefined') {
-    return
-  }
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(db))
+  storageAdapter.saveDb(db)
 }
 
 export const updateDb = (updater: (db: WorktrackDb) => WorktrackDb) => {

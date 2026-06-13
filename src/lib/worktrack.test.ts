@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BACKEND_ENTITY_MAP,
   blockerBadgeStatus,
   buildLinkUrl,
   computeNextValidation,
+  createPersistentStorageAdapterStub,
   daysRemaining,
   deriveLinkDisplayName,
+  loadDb,
   normalizeLinkNumber,
   parseLocalDate,
+  resetStorageAdapter,
   releaseTypeColor,
+  setStorageAdapter,
   validateLinkNumber,
 } from './worktrack'
 
@@ -38,5 +43,27 @@ describe('worktrack helpers', () => {
   it('maps blocker and release helpers', () => {
     expect(blockerBadgeStatus(false, '2026-06-12')).toBe('cleared')
     expect(releaseTypeColor('PGT')).toContain('badge-plum')
+  })
+
+  it('defines backend entity mapping for all persisted collections', () => {
+    expect(BACKEND_ENTITY_MAP.map((entry) => entry.entity)).toEqual([
+      'workItems',
+      'blockers',
+      'links',
+      'categories',
+      'blockerTypes',
+      'persons',
+      'releases',
+    ])
+  })
+
+  it('supports a persistent adapter stub seam without changing seeded behavior', () => {
+    setStorageAdapter(createPersistentStorageAdapterStub())
+    try {
+      const db = loadDb()
+      expect(db.workItems.length).toBeGreaterThan(0)
+    } finally {
+      resetStorageAdapter()
+    }
   })
 })
