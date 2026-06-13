@@ -60,7 +60,7 @@ export function CommentPanel({ workItemId }: { workItemId: string }) {
           comments.map((comment) => {
             const isEditing = editingCommentId === comment.commentId
             return (
-              <div key={comment.commentId} className="list-row comment-row">
+              <div key={comment.commentId} className="list-row comment-row" data-testid={`comment-row-${comment.commentId}`}>
                 <div className="stack comment-content">
                   <strong>{comment.authorEmail}</strong>
                   <small className="comment-meta">

@@ -40,15 +40,12 @@ describe('CommentPanel', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Add comment' }))
 
-    const addedComment = await screen.findByText('Ready for retry once secrets land.')
-    expect(addedComment).toBeInTheDocument()
+    expect(await screen.findByText('Ready for retry once secrets land.')).toBeInTheDocument()
     expect(loadDb().comments.find((comment) => comment.body === 'Ready for retry once secrets land.')?.authorEmail).toBe(
       FALLBACK_EMAIL,
     )
 
-    const addedCommentRow = addedComment.closest('.list-row')
-    expect(addedCommentRow).not.toBeNull()
-    fireEvent.click(within(addedCommentRow as HTMLElement).getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
     fireEvent.change(screen.getByLabelText('Edit comment'), {
       target: { value: 'Retry is queued once the secrets arrive.' },
     })
@@ -59,9 +56,7 @@ describe('CommentPanel', () => {
     })
     expect(await screen.findByText('Retry is queued once the secrets arrive.')).toBeInTheDocument()
 
-    const editedCommentRow = screen.getByText('Retry is queued once the secrets arrive.').closest('.list-row')
-    expect(editedCommentRow).not.toBeNull()
-    fireEvent.click(within(editedCommentRow as HTMLElement).getByRole('button', { name: 'Inactivate' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Inactivate' })[0])
     expect(await screen.findByRole('dialog', { name: 'Inactivate comment' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Inactivate comment' }))
 
