@@ -523,7 +523,14 @@ const getLastChangedMap = () => {
     return {} as Record<string, string>
   }
   const raw = window.localStorage.getItem(LAST_CHANGED_KEY)
-  return raw ? (JSON.parse(raw) as Record<string, string>) : {}
+  if (!raw) {
+    return {} as Record<string, string>
+  }
+  try {
+    return JSON.parse(raw) as Record<string, string>
+  } catch {
+    return {} as Record<string, string>
+  }
 }
 
 export const getLastChanged = (workItemId: string) => getLastChangedMap()[workItemId] || 'Seeded data'
@@ -577,10 +584,28 @@ export const loadDb = (): WorktrackDb => {
     return seedDb()
   }
   const raw = window.localStorage.getItem(STORAGE_KEY)
-  const parsed = raw ? (JSON.parse(raw) as WorktrackDb) : seedDb()
+  let parsed: WorktrackDb | null = null
+  if (raw) {
+    try {
+      parsed = JSON.parse(raw) as WorktrackDb
+    } catch {
+      window.localStorage.removeItem(STORAGE_KEY)
+    }
+  }
+  const base = parsed ?? seedDb()
+  const seed = seedDb()
+  const merged: WorktrackDb = {
+    categories: Array.isArray(base.categories) ? base.categories : seed.categories,
+    blockerTypes: Array.isArray(base.blockerTypes) ? base.blockerTypes : seed.blockerTypes,
+    workItems: Array.isArray(base.workItems) ? base.workItems : seed.workItems,
+    links: Array.isArray(base.links) ? base.links : seed.links,
+    blockers: Array.isArray(base.blockers) ? base.blockers : seed.blockers,
+    persons: Array.isArray(base.persons) ? base.persons : seed.persons,
+    releases: Array.isArray(base.releases) ? base.releases : seed.releases,
+  }
   const next: WorktrackDb = {
-    ...parsed,
-    persons: ensureFallbackPerson(enrichPendingPersons(parsed.persons)),
+    ...merged,
+    persons: ensureFallbackPerson(enrichPendingPersons(merged.persons)),
   }
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   return next
