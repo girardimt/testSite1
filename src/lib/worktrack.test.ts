@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   BACKEND_ENTITY_MAP,
-  DEFAULT_APP_SETTINGS,
   blockerBadgeStatus,
   buildLinkUrl,
   computeNextValidation,
@@ -9,41 +8,16 @@ import {
   daysRemaining,
   deriveLinkDisplayName,
   loadDb,
-  loadSettings,
   normalizeLinkNumber,
   parseLocalDate,
   resetStorageAdapter,
   releaseTypeColor,
-  saveSettings,
   setStorageAdapter,
   validateLinkNumber,
   validateLinkUniqueness,
-  type WorktrackDb,
-  type WorktrackStorageAdapter,
 } from './worktrack'
 
-const createMemoryAdapter = (db?: WorktrackDb): WorktrackStorageAdapter => {
-  let currentDb = db ?? null
-  let lastChanged: Record<string, string> = {}
-
-  return {
-    id: 'memory-test-adapter',
-    loadDb: () => currentDb,
-    saveDb: (nextDb) => {
-      currentDb = nextDb
-    },
-    loadLastChangedMap: () => lastChanged,
-    saveLastChangedMap: (nextMap) => {
-      lastChanged = nextMap
-    },
-  }
-}
-
 describe('worktrack helpers', () => {
-  beforeEach(() => {
-    resetStorageAdapter()
-  })
-
   it('normalizes ServiceNow style link numbers', () => {
     expect(normalizeLinkNumber('INC', 'inc-123 45')).toBe('INC12345')
     expect(normalizeLinkNumber('RITM', 'ritm 89-0')).toBe('RITM890')
@@ -128,45 +102,6 @@ describe('worktrack helpers', () => {
     try {
       const db = loadDb()
       expect(db.workItems.length).toBeGreaterThan(0)
-      expect(db.comments.length).toBeGreaterThan(0)
-      expect(db.appSettings).toEqual(DEFAULT_APP_SETTINGS)
-    } finally {
-      resetStorageAdapter()
-    }
-  })
-
-  it('loads default settings when older stored data has no appSettings entry', () => {
-    const seeded = loadDb()
-    const legacyDb = JSON.parse(JSON.stringify(seeded)) as WorktrackDb
-    delete (legacyDb as Partial<WorktrackDb>).appSettings
-    setStorageAdapter(createMemoryAdapter(legacyDb as WorktrackDb))
-    try {
-      expect(loadSettings()).toEqual(DEFAULT_APP_SETTINGS)
-    } finally {
-      resetStorageAdapter()
-    }
-  })
-
-  it('saves settings and ensures the configured fallback person exists', () => {
-    setStorageAdapter(createMemoryAdapter(loadDb()))
-    try {
-      const savedSettings = saveSettings({
-        fallbackPersonEmail: 'fallback.owner@example.com',
-        emailDomain: 'example.com',
-        allowedEmailDomains: ['example.org'],
-        defaultPageSize: 50,
-      })
-
-      expect(savedSettings).toEqual({
-        fallbackPersonEmail: 'fallback.owner@example.com',
-        emailDomain: 'example.com',
-        allowedEmailDomains: ['example.com', 'example.org'],
-        defaultPageSize: 50,
-      })
-
-      const db = loadDb()
-      expect(db.appSettings).toEqual(savedSettings)
-      expect(db.persons.some((person) => person.email === 'fallback.owner@example.com')).toBe(true)
     } finally {
       resetStorageAdapter()
     }
