@@ -12,29 +12,9 @@ import {
   type ReleaseType,
   releaseTypeColor,
 } from './worktrack'
+import { navTree } from '../app/layout/nav'
 
-export const navTree = [
-  { to: '/', label: 'Dashboard' },
-  { to: '/work-items', label: 'Work Items' },
-  { to: '/planning', label: 'Planning' },
-  {
-    label: 'Views',
-    children: [
-      { to: '/blockers', label: 'Blockers' },
-      { to: '/links', label: 'Links' },
-      { to: '/releases', label: 'Releases' },
-    ],
-  },
-  {
-    label: 'Core Data',
-    children: [
-      { to: '/categories', label: 'Categories' },
-      { to: '/blocker-types', label: 'Blocker Types' },
-      { to: '/people', label: 'People' },
-      { to: '/releases-md', label: 'Releases' },
-    ],
-  },
-] as const
+export { navTree }
 
 export class AppErrorBoundary extends Component<PropsWithChildren, { hasError: boolean }> {
   state = { hasError: false }
