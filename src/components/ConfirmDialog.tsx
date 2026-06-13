@@ -1,4 +1,4 @@
-import { Modal } from '../lib/ui'
+import { Modal } from './system/Modal'
 
 /**
  * A lightweight confirmation dialog built on the shared `Modal` component.

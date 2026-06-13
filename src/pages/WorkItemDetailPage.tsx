@@ -27,14 +27,12 @@ import {
   ReleaseBadge,
   ValidationBadge,
   WorkItemLink,
-} from '../lib/ui'
-import {
-  BlockerEditor,
-  LinkEditor,
-  WorkItemEditor,
-  remainingText,
-  useReferenceData,
-} from '../app/shared'
+} from '../components'
+import { remainingText, useReferenceData } from '../app/shared'
+import { LogBlockerDialog } from '../components/blockers/LogBlockerDialog'
+import { LinkDialog } from '../components/links/LinkDialog'
+import { CommentPanel } from '../components/work-items/CommentPanel'
+import { WorkItemDialog } from '../components/work-items/WorkItemDialog'
 
 export function WorkItemDetailPage() {
   const navigate = useNavigate()
@@ -303,6 +301,8 @@ export function WorkItemDetailPage() {
         </article>
       </section>
 
+      <CommentPanel workItemId={item.workItemId} />
+
       <article className="card">
         <div className="card-header">
           <h2>Sub-tasks</h2>
@@ -315,9 +315,9 @@ export function WorkItemDetailPage() {
         </div>
       </article>
 
-      <WorkItemEditor open={editOpen} onClose={() => setEditOpen(false)} initial={item} />
-      <BlockerEditor open={blockerOpen} onClose={() => setBlockerOpen(false)} workItem={item} onSubmit={logBlocker} />
-      <LinkEditor
+      <WorkItemDialog open={editOpen} onClose={() => setEditOpen(false)} initial={item} />
+      <LogBlockerDialog open={blockerOpen} onClose={() => setBlockerOpen(false)} workItem={item} onSubmit={logBlocker} />
+      <LinkDialog
         open={linkOpen}
         onClose={() => setLinkOpen(false)}
         workItemId={item.workItemId}
@@ -327,7 +327,7 @@ export function WorkItemDetailPage() {
           setLinkOpen(false)
         }}
       />
-      <WorkItemEditor open={subtaskOpen} onClose={() => setSubtaskOpen(false)} prefill={{ parentItemId: item.workItemId, categoryId: item.categoryId, status: 'Upcoming' }} />
+      <WorkItemDialog open={subtaskOpen} onClose={() => setSubtaskOpen(false)} prefill={{ parentItemId: item.workItemId, categoryId: item.categoryId, status: 'Upcoming' }} />
     </div>
   )
 }

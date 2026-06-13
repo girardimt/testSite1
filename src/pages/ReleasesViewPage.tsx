@@ -9,8 +9,9 @@ import {
   PageHeader,
   PeopleChip,
   ReleaseBadge,
-} from '../lib/ui'
-import { WorkItemEditor, remainingText, useReferenceData } from '../app/shared'
+} from '../components'
+import { remainingText, useReferenceData } from '../app/shared'
+import { WorkItemDialog } from '../components/work-items/WorkItemDialog'
 import { useNavigate } from 'react-router-dom'
 import {
   sizeColor,
@@ -102,7 +103,7 @@ export function ReleasesViewPage() {
           </article>
         ) : null}
       </section>
-      <WorkItemEditor open={open} onClose={() => setOpen(false)} prefill={{ releaseId: prefillReleaseId }} />
+      <WorkItemDialog open={open} onClose={() => setOpen(false)} prefill={{ releaseId: prefillReleaseId }} />
     </div>
   )
 }

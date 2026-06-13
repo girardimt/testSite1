@@ -1,48 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ShieldAlert } from 'lucide-react'
 import {
-  useBlockerTypeMutations,
   sortBlockerTypesForDialog,
-  loadDb,
+  useBlockerTypeMutations,
 } from '../lib/worktrack'
-import {
-  Field,
-  Modal,
-  PageHeader,
-} from '../lib/ui'
+import { PageHeader } from '../components'
 import { useReferenceData } from '../app/shared'
-
-function BlockerTypeEditor({
-  open,
-  onClose,
-  initial,
-  onSubmit,
-}: {
-  open: boolean
-  onClose: () => void
-  initial?: ReturnType<typeof loadDb>['blockerTypes'][number]
-  onSubmit: (type: ReturnType<typeof loadDb>['blockerTypes'][number]) => Promise<void>
-}) {
-  const [draft, setDraft] = useState(initial || { blockerTypeId: `bt-${Date.now()}`, name: '', days: 1 })
-  useEffect(() => {
-    setDraft(initial || { blockerTypeId: `bt-${Date.now()}`, name: '', days: 1 })
-  }, [initial, open])
-  return (
-    <Modal open={open} onClose={onClose} title={initial ? 'Edit Blocker Type' : 'New Blocker Type'}>
-      <div className="modal-form">
-        <Field label="Name" required>
-          <input className="form-input" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} />
-        </Field>
-        <Field label="Days">
-          <input className="form-input" type="number" min={1} value={draft.days} onChange={(event) => setDraft((current) => ({ ...current, days: Number(event.target.value) || 1 }))} />
-        </Field>
-        <button type="button" className="primary-button" disabled={!draft.name.trim()} onClick={async () => { await onSubmit(draft); onClose() }}>
-          Save
-        </button>
-      </div>
-    </Modal>
-  )
-}
+import { BlockerTypeDialog } from '../components/blocker-types/BlockerTypeDialog'
 
 export function BlockerTypesPage() {
   const { blockerTypes } = useReferenceData()
@@ -69,7 +33,7 @@ export function BlockerTypesPage() {
           </article>
         ))}
       </section>
-      <BlockerTypeEditor
+      <BlockerTypeDialog
         open={open || !!editing}
         onClose={() => {
           setOpen(false)

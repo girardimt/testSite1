@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import { RowShimmer } from '../lib/ui'
+import { RowShimmer } from '../components'
 import { AppLayout } from './layout/AppLayout'
 import { DashboardPage } from '../pages/DashboardPage'
 import { WorkItemsPage } from '../pages/WorkItemsPage'
@@ -14,6 +14,7 @@ import { BlockerTypesPage } from '../pages/BlockerTypesPage'
 import { PeoplePage } from '../pages/PeoplePage'
 import { ReleasesMasterDataPage } from '../pages/ReleasesMasterDataPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
+import { SettingsPage } from '../pages/SettingsPage'
 
 export const AppRouter = () => (
   <AppLayout>
@@ -30,6 +31,7 @@ export const AppRouter = () => (
         <Route path="/blocker-types" element={<BlockerTypesPage />} />
         <Route path="/people" element={<PeoplePage />} />
         <Route path="/releases-md" element={<ReleasesMasterDataPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>

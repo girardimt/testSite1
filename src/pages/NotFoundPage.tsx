@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
-import { EmptyState } from '../lib/ui'
+import { EmptyState } from '../components'
 
 export function NotFoundPage() {
   return (
