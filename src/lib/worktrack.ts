@@ -88,12 +88,23 @@ export interface Blocker {
   priorStatus: string
 }
 
+export interface WorkItemComment {
+  commentId: string
+  workItemId: string
+  body: string
+  authorEmail: string
+  createdAt: string
+  updatedAt: string
+  active: boolean
+}
+
 export interface WorktrackDb {
   categories: Category[]
   blockerTypes: BlockerType[]
   workItems: WorkItem[]
   links: Link[]
   blockers: Blocker[]
+  comments: WorkItemComment[]
   persons: Person[]
   releases: Release[]
 }
@@ -145,6 +156,7 @@ export const BACKEND_ENTITY_MAP: BackendEntityMapEntry[] = [
   { entity: 'workItems', localIdField: 'workItemId', persistentList: 'WorkItems', persistentIdField: 'WorkItemId' },
   { entity: 'blockers', localIdField: 'blockerId', persistentList: 'Blockers', persistentIdField: 'BlockerId' },
   { entity: 'links', localIdField: 'linkId', persistentList: 'Links', persistentIdField: 'LinkId' },
+  { entity: 'comments', localIdField: 'commentId', persistentList: 'Comments', persistentIdField: 'CommentId' },
   { entity: 'categories', localIdField: 'categoryId', persistentList: 'Categories', persistentIdField: 'CategoryId' },
   { entity: 'blockerTypes', localIdField: 'blockerTypeId', persistentList: 'BlockerTypes', persistentIdField: 'BlockerTypeId' },
   { entity: 'persons', localIdField: 'id', persistentList: 'People', persistentIdField: 'PersonId' },
@@ -465,7 +477,37 @@ const seedDb = (): WorktrackDb => {
     { linkId: 'lnk-5', name: 'CRF 77', workItemId: 'wi-1010', linkType: 'CRF', number: '77' },
   ]
 
-  return { categories, blockerTypes, workItems, links, blockers, persons, releases }
+  const comments: WorkItemComment[] = [
+    {
+      commentId: 'cmt-1',
+      workItemId: 'wi-1004',
+      body: 'Credential request is open with the platform team. Waiting on updated secrets to resume testing.',
+      authorEmail: FALLBACK_EMAIL,
+      createdAt: new Date(seedToday.getTime() - 2 * oneDay).toISOString(),
+      updatedAt: new Date(seedToday.getTime() - 2 * oneDay).toISOString(),
+      active: true,
+    },
+    {
+      commentId: 'cmt-2',
+      workItemId: 'wi-1004',
+      body: 'ServiceNow owner confirmed rotation is scheduled for tomorrow morning.',
+      authorEmail: 'priya.raman@pepsico.com',
+      createdAt: new Date(seedToday.getTime() - oneDay).toISOString(),
+      updatedAt: new Date(seedToday.getTime() - oneDay).toISOString(),
+      active: true,
+    },
+    {
+      commentId: 'cmt-3',
+      workItemId: 'wi-1004',
+      body: 'Old follow-up note kept for history only.',
+      authorEmail: 'alex.chen@pepsico.com',
+      createdAt: new Date(seedToday.getTime() - 3 * oneDay).toISOString(),
+      updatedAt: new Date(seedToday.getTime() - 2 * oneDay).toISOString(),
+      active: false,
+    },
+  ]
+
+  return { categories, blockerTypes, workItems, links, blockers, comments, persons, releases }
 }
 
 export const parseLocalDate = (value: string) => {
@@ -615,6 +657,9 @@ export const sortBlockerTypesForDialog = (items: BlockerType[]) => {
   })
 }
 
+export const sortCommentsNewestFirst = (comments: WorkItemComment[]) =>
+  [...comments].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+
 const getLastChangedMap = () => {
   return storageAdapter.loadLastChangedMap()
 }
@@ -666,10 +711,13 @@ export const loadDb = (): WorktrackDb => {
   if (typeof window === 'undefined') {
     return seedDb()
   }
-  const parsed = storageAdapter.loadDb() ?? seedDb()
+  const seeded = seedDb()
+  const parsed = storageAdapter.loadDb() ?? seeded
   const next: WorktrackDb = {
+    ...seeded,
     ...parsed,
-    persons: ensureFallbackPerson(enrichPendingPersons(parsed.persons)),
+    persons: ensureFallbackPerson(enrichPendingPersons(parsed.persons ?? seeded.persons)),
+    comments: parsed.comments ?? seeded.comments,
   }
   storageAdapter.saveDb(next)
   return next
@@ -691,6 +739,8 @@ const queryKeys = {
   workItems: ['workItems'],
   links: ['links'],
   blockers: ['blockers'],
+  comments: ['comments'],
+  workItemComments: (workItemId: string) => ['comments', workItemId] as const,
   persons: ['persons'],
   releases: ['releases'],
 } as const
@@ -755,6 +805,11 @@ export const useBlockerTypes = () =>
 export const useWorkItems = () => useQuery({ queryKey: queryKeys.workItems, queryFn: async () => loadDb().workItems })
 export const useLinks = () => useQuery({ queryKey: queryKeys.links, queryFn: async () => loadDb().links })
 export const useBlockers = () => useQuery({ queryKey: queryKeys.blockers, queryFn: async () => loadDb().blockers })
+export const useWorkItemComments = (workItemId: string) =>
+  useQuery({
+    queryKey: queryKeys.workItemComments(workItemId),
+    queryFn: async () => sortCommentsNewestFirst(loadDb().comments.filter((comment) => comment.workItemId === workItemId)),
+  })
 export const usePersons = () =>
   useQuery({
     queryKey: queryKeys.persons,
@@ -772,6 +827,88 @@ export const useBlockerTypeMutations = () =>
 export const useWorkItemMutations = () => useCrudMutations<WorkItem>(queryKeys.workItems, 'workItems', (item) => item.workItemId)
 export const useLinkMutations = () => useCrudMutations<Link>(queryKeys.links, 'links', (item) => item.linkId)
 export const useBlockerMutations = () => useCrudMutations<Blocker>(queryKeys.blockers, 'blockers', (item) => item.blockerId)
+export const useCommentMutations = () => {
+  const queryClient = useQueryClient()
+
+  const addComment = useMutation({
+    mutationFn: async ({ workItemId, body, authorEmail }: Pick<WorkItemComment, 'workItemId' | 'body'> & { authorEmail?: string }) => {
+      const timestamp = new Date().toISOString()
+      const nextComment: WorkItemComment = {
+        commentId: `cmt-${Date.now()}`,
+        workItemId,
+        body: body.trim(),
+        authorEmail: authorEmail ?? FALLBACK_EMAIL,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        active: true,
+      }
+      updateDb((db) => ({ ...db, comments: [...db.comments, nextComment] }))
+      touchLastChanged(workItemId)
+      return nextComment
+    },
+    onSuccess: async (comment) => {
+      await invalidateAll(queryClient, [queryKeys.comments, queryKeys.workItemComments(comment.workItemId)])
+    },
+  })
+
+  const editComment = useMutation({
+    mutationFn: async ({ commentId, body }: Pick<WorkItemComment, 'commentId' | 'body'>) => {
+      let updatedComment: WorkItemComment | undefined
+      updateDb((db) => ({
+        ...db,
+        comments: db.comments.map((comment) => {
+          if (comment.commentId !== commentId) {
+            return comment
+          }
+          updatedComment = {
+            ...comment,
+            body: body.trim(),
+            updatedAt: new Date().toISOString(),
+          }
+          return updatedComment
+        }),
+      }))
+      if (!updatedComment) {
+        throw new Error(`Comment ${commentId} not found`)
+      }
+      touchLastChanged(updatedComment.workItemId)
+      return updatedComment
+    },
+    onSuccess: async (comment) => {
+      await invalidateAll(queryClient, [queryKeys.comments, queryKeys.workItemComments(comment.workItemId)])
+    },
+  })
+
+  const inactivateComment = useMutation({
+    mutationFn: async ({ commentId }: Pick<WorkItemComment, 'commentId'>) => {
+      let updatedComment: WorkItemComment | undefined
+      updateDb((db) => ({
+        ...db,
+        comments: db.comments.map((comment) => {
+          if (comment.commentId !== commentId) {
+            return comment
+          }
+          updatedComment = {
+            ...comment,
+            active: false,
+            updatedAt: new Date().toISOString(),
+          }
+          return updatedComment
+        }),
+      }))
+      if (!updatedComment) {
+        throw new Error(`Comment ${commentId} not found`)
+      }
+      touchLastChanged(updatedComment.workItemId)
+      return updatedComment
+    },
+    onSuccess: async (comment) => {
+      await invalidateAll(queryClient, [queryKeys.comments, queryKeys.workItemComments(comment.workItemId)])
+    },
+  })
+
+  return { addComment, editComment, inactivateComment }
+}
 export const usePersonMutations = () => useCrudMutations<Person>(queryKeys.persons, 'persons', (item) => item.id)
 export const useReleaseMutations = () => useCrudMutations<Release>(queryKeys.releases, 'releases', (item) => item.id)
 

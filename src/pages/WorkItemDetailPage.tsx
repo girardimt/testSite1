@@ -35,6 +35,7 @@ import {
   remainingText,
   useReferenceData,
 } from '../app/shared'
+import { CommentPanel } from '../components/work-items/CommentPanel'
 
 export function WorkItemDetailPage() {
   const navigate = useNavigate()
@@ -302,6 +303,8 @@ export function WorkItemDetailPage() {
           </div>
         </article>
       </section>
+
+      <CommentPanel workItemId={item.workItemId} />
 
       <article className="card">
         <div className="card-header">

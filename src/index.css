@@ -502,6 +502,43 @@ small {
   align-items: center;
 }
 
+.comment-row {
+  align-items: flex-start;
+}
+
+.comment-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-body {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.comment-meta,
+.comment-form__footer {
+  color: var(--gray-dark);
+}
+
+.comment-form__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.comment-actions {
+  justify-content: flex-end;
+}
+
+.comment-empty-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .list-link {
   flex-direction: column;
 }
